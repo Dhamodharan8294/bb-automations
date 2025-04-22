@@ -1,0 +1,28 @@
+#
+# This is run during Dev stack deployments, executing integration tests after the CloudFormation stack has been updated.
+#
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+
+  build:
+    commands:
+      - |
+        set -e
+        if [ "$SKIP_EXECUTION" = "true" ]; then
+          echo '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite tests="0" errors="0"/></testsuites>' > no_tests.xml
+        else
+          echo "Running tests with API_GATEWAY_URL=$API_GATEWAY_URL"
+          ./run-rest-tests $API_GATEWAY_URL
+        fi
+
+reports:
+  JUnitReports:
+    files:
+      - '**/*.xml'
+    base-directory: 'tests/report'
+    file-format: 'JunitXml'

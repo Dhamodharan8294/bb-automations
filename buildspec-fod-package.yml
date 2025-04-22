@@ -1,0 +1,33 @@
+#
+# This is run after a merge to main. Its job is to package our source code in a format scannable by Fortify on Demand.
+#
+
+version: 0.2
+
+env:
+  secrets-manager:
+    ARTIFACTORY_USERNAME: pipelines:ARTIFACTORY_USERNAME
+    ARTIFACTORY_TOKEN: pipelines:ARTIFACTORY_TOKEN
+    ARTIFACTORY_PYPI_INDEX: pipelines:ARTIFACTORY_PYPI_INDEX
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+
+  build:
+    commands:
+      # package third-party dependencies
+      - python3 -m venv .env
+      - . .env/bin/activate
+      - git clone --quiet --depth 1 --branch v2 https://github.com/blackboard-innersource/gh-action-setup-artifactory.git
+      - ./gh-action-setup-artifactory/setup_pip.sh
+      - pip install -r layers/libraries/requirements.txt
+      - cp layers/libraries/requirements.txt fod-requirements.txt
+
+artifacts:
+  files:
+    - "functions/**/*.py"
+    - "layers/**/*.py"
+    - ".env/**/*"
+    - "fod-requirements.txt"

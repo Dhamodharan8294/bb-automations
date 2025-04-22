@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e
+
+export PRIVATE_ENDPOINTS_URL=$1
+if [[ -z $PRIVATE_ENDPOINTS_URL ]]; then
+  echo "Usage: $0 <private-endpoint-url>"
+  exit 1
+fi
+
+export PYTHONPATH="layers"
+python -m pytest -ra --capture=no -vvv --durations=0 tests/rest/ --junitxml tests/report/rest.xml

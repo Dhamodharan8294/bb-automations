@@ -1,0 +1,38 @@
+#
+# This is run for feature branches when a GitHub PR is opened.
+#
+
+version: 0.2
+
+env:
+  secrets-manager:
+    ARTIFACTORY_USERNAME: pipelines:ARTIFACTORY_USERNAME
+    ARTIFACTORY_TOKEN: pipelines:ARTIFACTORY_TOKEN
+    ARTIFACTORY_PYPI_INDEX: pipelines:ARTIFACTORY_PYPI_INDEX
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+      python: 3.11
+
+  pre_build:
+    commands:
+      - git clone --quiet --depth 1 --branch v2 https://github.com/blackboard-innersource/gh-action-setup-artifactory.git
+      - ./gh-action-setup-artifactory/setup_pip.sh
+      - pip install -r requirements.txt
+      - npm install -g aws-cdk@2
+
+  build:
+    commands:
+      - cdk synth --no-asset-metadata
+      - pip install $(git ls-files | grep requirements.txt | sed -e 's/^/-r /')
+      - ./run-unit-tests
+      - ./run-linting --skip-yapf
+
+reports:
+  JUnitReports:
+    files:
+      - '**/*.xml'
+    base-directory: 'tests/report'
+    file-format: 'JunitXml'

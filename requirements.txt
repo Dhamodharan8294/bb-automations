@@ -1,0 +1,5 @@
+--index-url https://blackboard.jfrog.io/artifactory/api/pypi/fnds-pypi/simple
+
+aws-cdk-lib==2.130.0
+constructs>=10.0.0,<11.0.0
+bb-fnds.pyfnds-cdk

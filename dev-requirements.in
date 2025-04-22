@@ -1,0 +1,10 @@
+--index-url https://blackboard.jfrog.io/artifactory/api/pypi/fnds-pypi/simple
+
+boto3-stubs[cloudformation,dynamodb,events,lambda,secretsmanager,sqs,stepfunctions,sts]
+mypy
+pylint
+yapf
+types-requests
+types-pytz
+types-cachetools
+awscurl

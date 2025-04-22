@@ -1,0 +1,9 @@
+--index-url https://blackboard.jfrog.io/artifactory/api/pypi/fnds-pypi/simple
+
+bb-ent-data-services-shared.tests
+bb-fnds.pyfnds-pytest
+
+moto
+pyjwt
+pytz
+requests-mock

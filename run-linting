@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -e
+
+export PYTHONPATH="layers:functions"
+
+source_dirs="cdk functions layers tests"
+
+yapf_command="--diff"
+skip_mypy=false
+skip_pylint=false
+skip_yapf=false
+
+optspec=":-:"
+while getopts "$optspec" optchar; do
+  case "${optchar}" in
+    -)
+      case "${OPTARG}" in
+        in-place)
+          yapf_command="--in-place"
+          ;;
+        skip-mypy)
+          skip_mypy=true
+          ;;
+        skip-pylint)
+          skip_pylint=true
+          ;;
+        skip-yapf)
+          skip_yapf=true
+          ;;
+      esac;;
+  esac
+done
+
+if ! $skip_mypy; then
+  echo "MYPY"
+  echo "####################"
+  mypy --namespace-packages --show-error-codes $source_dirs
+fi
+
+if ! $skip_pylint; then
+  echo "PYLINT"
+  echo "####################"
+  pylint --recursive y $source_dirs *.py
+fi
+
+if ! $skip_yapf; then
+  echo "YAPF"
+  echo "####################"
+  yapf -vv -p -r $yapf_command $source_dirs *.py
+fi

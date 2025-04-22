@@ -1,0 +1,4 @@
+--index-url https://blackboard.jfrog.io/artifactory/api/pypi/fnds-pypi/simple
+
+bb-ent-data-services-shared.cdk
+bb-fnds.pyfnds-cdk

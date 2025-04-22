@@ -1,0 +1,275 @@
+openapi: 3.0.0
+info:
+  title: Foundations Connector
+  description: Foundations Connector - Learn to Foundations Event Bridge adapter service
+  version: 1.0.0
+
+paths:
+  /api/v1/foundationsConnector/tenants/{tenantId}/queues/{queueType}:
+    get:
+      description: Get one of this tenant's queues, including access credentials. Implicitly creates the queue if it doesn't exist.
+      security:
+      - FoundationsAuthorizer: []
+      parameters:
+      - $ref: '#/components/parameters/tenantId'
+      - name: queueType
+        description: The type of queue to get. Each tenant has two queues, one for inbound messages going into Foundations, and one for outbound messages going back to the tenant.
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/queueType'
+      responses:
+        200:
+          description: Information about the queue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/queueWithCredentials'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+        503:
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: POST
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetQueueFunctionAlias}/invocations
+      x-blackboard-privacy:
+        - TenantRead
+        - TenantModify
+
+  /internal/api/v1/foundationsConnector/tenants/{tenantId}/queues:
+    parameters:
+      - $ref: '#/components/parameters/tenantId'
+
+    get:
+      description: Gets existing queues associated with a tenant. This will only be used for internal testing, and not exposed by the API Gateway.
+      security:
+        - InternalAuthorizer: []
+      responses:
+        200:
+          description: List of queues.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/queueList'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        410:
+          $ref: '#/components/responses/Gone'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+        503:
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: POST
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetQueuesFunctionAlias}/invocations
+      x-blackboard-privacy:
+        - TenantRead
+
+    delete:
+      description: Deletes all queues associated with a tenant. This will only be used for internal testing, and not exposed by the API Gateway.
+      security:
+        - InternalAuthorizer: []
+      responses:
+        202:
+          description: Tenant queue deletion has been scheduled.
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          $ref: '#/components/responses/Conflict'
+        410:
+          $ref: '#/components/responses/Gone'
+        500:
+          $ref: '#/components/responses/InternalServerError'
+        503:
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: POST
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteQueuesFunctionAlias}/invocations
+      x-blackboard-privacy:
+        - TenantModify
+
+components:
+  securitySchemes:
+    FoundationsAuthorizer:
+      ${RegistrarAuthorizer}
+    InternalAuthorizer:
+      description: Requires an AWS signature. Should be used for private endpoints.
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: awsSigv4
+
+  parameters:
+    tenantId:
+      name: tenantId
+      description: The ID of the tenant.
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "b9600e2d-779d-46ae-b462-6d888e1f1761"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 400
+            message: BadRequest
+            details: Invalid parameter value.
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 403
+            message: Forbidden
+            details: Caller is not authorized to view this tenant.
+    Gone:
+      description: Gone
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 410
+            message: Gone
+            details: Queue deletion is in progress.
+    NotFound:
+      description: NotFound
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 404
+            message: NotFound
+            details: No queues exist for tenant.
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 409
+            message: Conflict
+            details: Resources are not deletable at the moment.
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 500
+            message: Internal Server Error
+            details: The server encountered an unexpected condition which prevented it from fulfilling the request.
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+          example:
+            code: 503
+            message: Service Unavailable
+            details: The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.
+
+  schemas:
+    errorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        details:
+          type: string
+
+    queueType:
+      description: The type of queue. Each tenant has two queues, one for inbound messages going into Foundations, and one for outbound messages going back to the tenant.
+      type: string
+      enum:
+      - Inbound
+      - Outbound
+
+    queue:
+      type: object
+      properties:
+        tenantId:
+          description: The ID of the tenant owning this object.
+          type: string
+          example: "b9600e2d-779d-46ae-b462-6d888e1f1761"
+          x-blackboard-privacy:
+            - OrganizationIdentifier
+        type:
+          $ref: '#/components/schemas/queueType'
+        arn:
+          description: The AWS ARN for this queue. Useful when mapping incoming events back to a tenant.
+          type: string
+          example: "arn:aws:sqs:us-east-1:257597320193:e0b5df24-5fd5-4776-a184-0ab0cd5183e8"
+          x-blackboard-privacy:
+            - OrganizationIdentifier
+        url:
+          description: The AWS URL ARN for this queue. Useful when publishing events to a queue.
+          type: string
+          example: "https://sqs.us-east-1.amazonaws.com/257597320193/e0b5df24-5fd5-4776-a184-0ab0cd5183e8"
+          x-blackboard-privacy:
+            - OrganizationIdentifier
+
+    queueWithCredentials:
+      allOf:
+      - $ref: '#/components/schemas/queue'
+      - type: object
+        properties:
+          region:
+            description: AWS region queues are defined in.
+            type: string
+            example: "us-east-1"
+          credentials:
+            type: object
+            description: AWS credentials that can be used to access the queue.
+            properties:
+              accessKeyId:
+                type: string
+                example: "AKIAIOSFODNN7EXAMPLE"
+              secretAccessKey:
+                type: string
+                example: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY"
+              sessionToken:
+                type: string
+                example: "AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmxfpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wUE8phUZampKsburEDy0KPkyQDYwT7WZ0wq5VSXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSIlTJabIQwj2ICCR/oLxBA=="
+              expires:
+                type: string
+                format: date-time
+                example: "2019-07-15T23:28:33.359Z"
+
+    queueList:
+      type: array
+      items:
+        $ref: '#/components/schemas/queue'
+
+# Always validate request parameters and body
+x-amazon-apigateway-request-validators:
+  all:
+    validateRequestBody: True
+    validateRequestParameters: True
+x-amazon-apigateway-request-validator: all

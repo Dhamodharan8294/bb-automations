@@ -1,0 +1,33 @@
+#
+# This is run after a merge to main, before any deployments are started. This is where unit tests are typically executed.
+#
+
+version: 0.2
+
+env:
+  secrets-manager:
+    ARTIFACTORY_USERNAME: pipelines:ARTIFACTORY_USERNAME
+    ARTIFACTORY_TOKEN: pipelines:ARTIFACTORY_TOKEN
+    ARTIFACTORY_PYPI_INDEX: pipelines:ARTIFACTORY_PYPI_INDEX
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+
+  pre_build:
+    commands:
+      - git clone --quiet --depth 1 --branch v2 https://github.com/blackboard-innersource/gh-action-setup-artifactory.git
+      - ./gh-action-setup-artifactory/setup_pip.sh
+      - pip install -r layers/libraries/requirements.txt -r tests/requirements.txt
+
+  build:
+    commands:
+      - ./run-unit-tests
+
+reports:
+  JUnitReports:
+    files:
+      - '**/*.xml'
+    base-directory: 'tests/report'
+    file-format: 'JunitXml'

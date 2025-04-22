@@ -1,0 +1,4 @@
+--index-url https://blackboard.jfrog.io/artifactory/api/pypi/fnds-pypi/simple
+
+-r layers/libraries/requirements.txt 
+-r tests/requirements.txt

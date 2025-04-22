@@ -1,0 +1,35 @@
+#
+# This is run after a merge to main, before any deployments are started. Its primary job is to use CDK to generate
+# CloudFormation templates for all deployments.
+#
+# See https://github.com/blackboard-foundations/pipeline-forge/blob/main/pipeline_forge/cdk_pipeline/buildspec-synth.yml
+# for the default version of this file.
+#
+
+version: 0.2
+
+env:
+  secrets-manager:
+    ARTIFACTORY_USERNAME: pipelines:ARTIFACTORY_USERNAME
+    ARTIFACTORY_TOKEN: pipelines:ARTIFACTORY_TOKEN
+    ARTIFACTORY_PYPI_INDEX: pipelines:ARTIFACTORY_PYPI_INDEX
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+      python: 3.11
+
+    commands:
+      - npm install -g aws-cdk@2
+      - git clone --quiet --depth 1 --branch v2 https://github.com/blackboard-innersource/gh-action-setup-artifactory.git
+      - ./gh-action-setup-artifactory/setup_pip.sh
+      - pip install -r requirements.txt
+
+  build:
+    commands:
+      - cdk synth --no-asset-metadata
+
+artifacts:
+  base-directory: cdk.out
+  files: "**/*"

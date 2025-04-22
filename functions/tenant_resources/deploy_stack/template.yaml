@@ -1,0 +1,74 @@
+Parameters:
+  TenantId:
+    Type: String
+  ClientId:
+    Type: String
+  StackVersion:
+    Type: String
+  ManageMetadataFunctionArn:
+    Type: String
+  InboundDlqArn:
+    Type: String
+  PagerDutyAlarmWarningTopic:
+    Type: String
+    Default: ""
+
+
+Conditions:
+  SendPagerDutyWarningAlerts: !Not
+    - !Equals
+      - !Ref PagerDutyAlarmWarningTopic
+      - ""
+
+Resources:
+  # Note that some resources cannot be renamed after creation, as this would potentially destroy queues that are being
+  # used. Names below containing checksums were defined previously by CDK and cannot be changed now.
+  #
+  # Also note that if any functional changes are made to the tenant stack definition, the number in version.txt must
+  # be incremented.
+
+  InboundQueueF8D91047:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: alias/aws/sqs
+      MessageRetentionPeriod: 1209600
+      QueueName: !Join [ "", [ !Ref AWS::StackName, "-inbound" ] ]
+      VisibilityTimeout: 900
+      RedrivePolicy:
+        deadLetterTargetArn: !Ref InboundDlqArn
+        maxReceiveCount: 10
+
+  InboundQueueOldMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if the age of the oldest message inbound to Learn is too old
+      # PagerDuty notifications are temporarily disabled while we sort out how to prevent false alerts
+      # AlarmActions: !If [SendPagerDutyWarningAlerts, !Split [ ",", !Ref PagerDutyAlarmWarningTopic ], !Ref AWS::NoValue]
+      # OKActions: !If [SendPagerDutyWarningAlerts, !Split [ ",", !Ref PagerDutyAlarmWarningTopic ], !Ref AWS::NoValue]
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt InboundQueueF8D91047.QueueName
+      MetricName: ApproximateAgeOfOldestMessage
+      Namespace: AWS/SQS
+      Period: 60
+      Statistic: Maximum
+      Threshold: 21600
+      TreatMissingData: notBreaching
+
+  TenantRecord:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !Ref ManageMetadataFunctionArn
+      TenantId: !Ref TenantId
+      ClientId: !Ref ClientId
+      Version: !Ref StackVersion
+      InboundQueueArn: !GetAtt InboundQueueF8D91047.Arn
+      InboundQueueUrl: !Ref InboundQueueF8D91047
+
+Outputs:
+  InboundQueueArn:
+    Value: !GetAtt InboundQueueF8D91047.Arn
+  InboundQueueName:
+    Value: !GetAtt InboundQueueF8D91047.QueueName
